@@ -1,5 +1,5 @@
 /*
- * jQuery File Upload User Interface Plugin 8.8.1
+ * jQuery File Upload User Interface Plugin 8.9.0
  * https://github.com/blueimp/jQuery-File-Upload
  *
  * Copyright 2010, Sebastian Tschan
@@ -81,6 +81,9 @@
             // widget (via file input selection, drag & drop or add API call).
             // See the basic file upload widget for more information:
             add: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var $this = $(this),
                     that = $this.data('blueimp-fileupload') ||
                         $this.data('fileupload'),
@@ -108,6 +111,9 @@
             },
             // Callback for the start of each file upload request:
             send: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload');
                 if (data.context && data.dataType &&
@@ -129,6 +135,9 @@
             },
             // Callback for successful uploads:
             done: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload'),
                     getFilesFromResponse = data.getFilesFromResponse ||
@@ -136,26 +145,6 @@
                     files = getFilesFromResponse(data),
                     template,
                     deferred;
-                var name_extract=function (file) {
-                    var url = file.url;
-                    var name = decodeURIComponent(url);
-                    name = name.substr(name.lastIndexOf('/') + 1);
-                    return name;
-                };
-                var union = function (array1, array2) {
-                    var hash = {}, union = [];
-                    $.each($.merge($.merge([], array1), array2), function (index, value) { hash[value] = value; });
-                    $.each(hash, function (key, value) { union.push(key); } );
-                    return union;
-                };
-                var actual_files = getFilesFromResponse(data).map(name_extract);
-                if(!window._uploadedFiles)
-                {
-                    window._uploadedFiles=union([],actual_files);
-
-                } else{
-                    window._uploadedFiles=union(window._uploadedFiles,actual_files);
-                }
                 if (data.context) {
                     data.context.each(function (index) {
                         var file = files[index] ||
@@ -196,6 +185,9 @@
             },
             // Callback for failed (abort or error) uploads:
             fail: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload'),
                     template,
@@ -258,18 +250,26 @@
             },
             // Callback for upload progress events:
             progress: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
+                var progress = Math.floor(data.loaded / data.total * 100);
                 if (data.context) {
-                    var progress = Math.floor(data.loaded / data.total * 100);
-                    data.context.find('.progress')
-                        .attr('aria-valuenow', progress)
-                        .children().first().css(
-                            'width',
-                            progress + '%'
-                        );
+                    data.context.each(function () {
+                        $(this).find('.progress')
+                            .attr('aria-valuenow', progress)
+                            .children().first().css(
+                                'width',
+                                progress + '%'
+                            );
+                    });
                 }
             },
             // Callback for global upload progress events:
             progressall: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var $this = $(this),
                     progress = Math.floor(data.loaded / data.total * 100),
                     globalProgressNode = $this.find('.fileupload-progress'),
@@ -291,6 +291,9 @@
             },
             // Callback for uploads start, equivalent to the global ajaxStart event:
             start: function (e) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload');
                 that._resetFinishedDeferreds();
@@ -302,6 +305,9 @@
             },
             // Callback for uploads stop, equivalent to the global ajaxStop event:
             stop: function (e) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload'),
                     deferred = that._addFinishedDeferreds();
@@ -319,15 +325,23 @@
                     }
                 );
             },
-            processstart: function () {
+            processstart: function (e) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 $(this).addClass('fileupload-processing');
             },
-            processstop: function () {
+            processstop: function (e) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 $(this).removeClass('fileupload-processing');
             },
             // Callback for file deletion:
             destroy: function (e, data) {
-
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload'),
                     removeNode = function () {
@@ -339,6 +353,7 @@
                         );
                     };
                 if (data.url) {
+                    data.dataType = data.dataType || that.options.dataType;
                     $.ajax(data).done(removeNode);
                 } else {
                     removeNode();
@@ -474,16 +489,19 @@
             var button = $(e.currentTarget),
                 template = button.closest('.template-upload'),
                 data = template.data('data');
-            if (data && data.submit && !data.jqXHR && data.submit()) {
-                button.prop('disabled', true);
+            button.prop('disabled', true);
+            if (data && data.submit) {
+                data.submit();
             }
         },
 
         _cancelHandler: function (e) {
             e.preventDefault();
-            var template = $(e.currentTarget).closest('.template-upload'),
+            var template = $(e.currentTarget)
+                    .closest('.template-upload,.template-download'),
                 data = template.data('data') || {};
             if (!data.jqXHR) {
+                data.context = data.context || template;
                 data.errorThrown = 'abort';
                 this._trigger('fail', e, data);
             } else {

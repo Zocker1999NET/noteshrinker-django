@@ -1,5 +1,5 @@
 /*
- * jQuery File Upload AngularJS Plugin 1.4.3
+ * jQuery File Upload AngularJS Plugin 1.5.0
  * https://github.com/blueimp/jQuery-File-Upload
  *
  * Copyright 2013, Sebastian Tschan
@@ -60,6 +60,9 @@
                     }
                 },
                 add: function (e, data) {
+                    if (e.isDefaultPrevented()) {
+                        return false;
+                    }
                     var scope = data.scope();
                     data.process(function () {
                         return scope.process(data);
@@ -68,23 +71,22 @@
                             var file = data.files[0],
                                 submit = function () {
                                     return data.submit();
-                                },
-                                i;
-                            for (i = 0; i < data.files.length; i += 1) {
-                                data.files[i]._index = i;
-                            }
+                                };
+                            angular.forEach(data.files, function (file, index) {
+                                file._index = index;
+                                file.$state = function () {
+                                    return data.state();
+                                };
+                                file.$progress = function () {
+                                    return data.progress();
+                                };
+                                file.$response = function () {
+                                    return data.response();
+                                };
+                            });
                             file.$cancel = function () {
                                 scope.clear(data.files);
                                 return data.abort();
-                            };
-                            file.$state = function () {
-                                return data.state();
-                            };
-                            file.$progress = function () {
-                                return data.progress();
-                            };
-                            file.$response = function () {
-                                return data.response();
                             };
                             if (file.$state() === 'rejected') {
                                 file._$submit = submit;
@@ -109,15 +111,24 @@
                     );
                 },
                 progress: function (e, data) {
+                    if (e.isDefaultPrevented()) {
+                        return false;
+                    }
                     data.scope().$apply();
                 },
                 done: function (e, data) {
+                    if (e.isDefaultPrevented()) {
+                        return false;
+                    }
                     var that = this;
                     data.scope().$apply(function () {
                         data.handleResponse.call(that, e, data);
                     });
                 },
                 fail: function (e, data) {
+                    if (e.isDefaultPrevented()) {
+                        return false;
+                    }
                     var that = this;
                     if (data.errorThrown === 'abort') {
                         return;
@@ -364,13 +375,15 @@
 
         .directive('fileUpload', function () {
             return {
-                controller: 'FileUploadController'
+                controller: 'FileUploadController',
+                scope: true
             };
         })
 
         .directive('fileUploadProgress', function () {
             return {
-                controller: 'FileUploadProgressController'
+                controller: 'FileUploadProgressController',
+                scope: true
             };
         })
 
